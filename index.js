@@ -11,7 +11,7 @@ const Promise = require("bluebird"),
 	expressions = require("angular-expressions"),
 	lodash = require("lodash"),
 	app = express(),
-	port = 5000,
+	port = process.env.PORT || 5000,
 	expr_default = "({{ time.toLocaleString('en-us') }}): {{ method }} - {{ url }}";
 
 var logs = {};
