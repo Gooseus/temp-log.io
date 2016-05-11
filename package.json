@@ -1,0 +1,19 @@
+{
+  "name": "temp-log.io",
+  "version": "1.0.0",
+  "description": "create logging urls with realtime logging apps",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Shawn Marincas",
+  "license": "ISC",
+  "dependencies": {
+    "angular-expressions": "^0.3.0",
+    "bluebird": "^3.3.5",
+    "body-parser": "^1.15.1",
+    "express": "^4.13.4",
+    "lodash": "^4.12.0"
+  }
+}

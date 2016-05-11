@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html ng-app="templog">
+<head>
+	<base href="/" />
+	<title>Temp Log</title>
+	<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body ng-controller="AppCtrl">
+	<h1>Log Output:</h1>
+	<ul>
+		<li ng-repeat="log in logs track by $index">{{ log }}</li>
+	</ul>
+	<!-- https://ajax.googleapis.com/ajax/libs/angularjs/1.5.5/angular.min.js -->
+	<script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.5.5/angular.min.js"></script>
+	<script>
+		angular.module("templog",[])
+		.config([
+			'$httpProvider',
+			function($httpProvider) {
+				$httpProvider.defaults.headers.common["X-Requested-With"] = 'XMLHttpRequest';
+			}
+		])
+		.controller("AppCtrl", [
+			"$scope", "$http",
+			function($scope, $http) {
+				console.log("app controller starting up");
+
+				$scope.logs = [];
+
+				$http.get("")
+				.then(function(res) {
+					console.log(res);
+					if(res.data) {
+						$scope.logs = res.data;
+					}
+				})
+				.catch(function(err) {
+					console.log(err);
+				})
+			}
+		])
+	</script>
+</body>
