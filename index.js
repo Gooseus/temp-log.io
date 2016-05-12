@@ -10,12 +10,15 @@ const Promise = require("bluebird"),
 	bodyParser = require("body-parser"),
 	expressions = require("angular-expressions"),
 	lodash = require("lodash"),
+	Redis = require("ioredis"),
 	config = __require("config.json"),
 
+	redis = new Redis(process.env.REDIS_URL || "localhost"),
 	app = express();
 
-var logs = {};
+expressions.filters.stringify = input => JSON.stringify(input);
 
+app.set("redis", redis);
 app.set("port", process.env.PORT || config.port);
 app.set("formHtml", config.formHtml);
 app.set("outputHtml", config.outputHtml);
@@ -26,7 +29,15 @@ app.set("idType", config.idType);
 app.set("defaultExpr", config.defaults.expr);
 app.set("outLimit", config.defaults.limit);
 
+app.use(function(req,res,next) {
+	if(req.body && Object.keys(req.body)>0) {
+		req.rawBody = req.body;
+	}
+
+	next();
+});
 app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
 
 app.get("/", function(req, res) {
 	// Deliver HTML logger creation form here
@@ -37,52 +48,62 @@ app.post("/", function(req,res) {
 	const id = crypto.randomBytes(app.get("idSize")).toString(app.get("idType")),
 		url = req.protocol+"://" + req.hostname + (process.env.NODE_ENV != "production" ? ":"+app.get("port") : "") + "/i/" + id;
 
+	console.log("creating log", url, req.body);
+
 	res.send(url);
 
-	logs[id] = {
+	redis.set(`url-${id}`, JSON.stringify({
 		id: id,
 		url: url,
 		logs: [],
 		expr: req.body.expr || app.get("defaultExpr"),
 		limit: req.body.limit || app.get("outLimit")
-	};
+	}));
 });
 
 app.all("/i/:id", function inputLogHandler(req,res,next) {
 	console.log("we get here??", req.params.id);
-
-	const logger = logs[req.params.id];
-	if(!logger) {
-		return next();
-	}
-
+	
 	req.time = new Date();
 
-	const scope = lodash.pick(req, "time", "method", "url", "originalUrl", "body", "headers", "query", "params"),
-		log = logger.expr.replace(/\{\{\s*(.*?)\s*\}\}/g, function(match,sub,offset,full) {
-				return expressions.compile(sub)(scope);
-			});
+	redis.get(`url-${req.params.id}`)
+	.then(JSON.parse)
+	.then((log) => {
+		const scope = lodash.pick(req, "time", "method", "url", "originalUrl", "body", "rawBody", "headers", "query", "params"),
+			entry = log.expr.replace(/\{\{\s*(.*?)\s*\}\}/g, function compileStringSubExpressions(match,sub,offset,full) {
+					return expressions.compile(sub)(scope);
+				});
 
-	logger.logs.push(log);
-	res.status(200).send(log);
+		return redis.rpush(`log-${log.id}`,entry).then(function(len) {
+			res.status(200).send(entry);
 
-	while(logger.logs.length>logger.limit) {
-		logger.logs.shift();
-	}
+			console.log(`log ${log.id} now has ${len} entries.`);
+			if(len>log.limit) {
+				console.log(`trimming log ${log.id}`);
+				redis.ltrim(`log-${log.id}`, -1*(log.limit-1), -1);
+			}
+		});
+	})
+	.catch((err) => {
+		console.log("redis or json error", err);
+		next(err);
+	});
 });
 
 app.get("/o/:id", function outputLogHandler(req,res,next) {
-	// Deliver HTML logger reading app here
-	const logger = logs[req.params.id];
-	if(!logger) {
-		return next();
+	if(!req.xhr) {
+		return res.sendFile(app.get("outputHtml"), { root: __dirname + app.get("htmlDir") });
 	}
 
-	if(req.xhr) {
-		res.json(logger.logs);
-	} else {
-		res.sendFile(app.get("outputHtml"), { root: __dirname + app.get("htmlDir") });
-	}
+	console.log(`getting log-${req.params.id}`);
+
+	redis.lrange(`log-${req.params.id}`,0,-1)
+	.then((log) => res.json(log))
+	.catch((err) => {
+		console.log("redis or json error", err);
+		next(err);
+	});
+
 });
 
 app.all("*", function expressCatchAllHandler(req,res) {
@@ -97,4 +118,6 @@ app.use(function expressErrorHandler(err, req, res, next) {
 	res.status(err.status || 500).send(err.message || "Server Error");
 });
 
-app.listen(app.get("port"), function expressAppListenHandler() { console.log("\nService running on port " + app.get("port") + "\n"); });
+app.listen(app.get("port"), function expressAppListenHandler() {
+	console.log("\nService running on port " + app.get("port") + "\n");
+});

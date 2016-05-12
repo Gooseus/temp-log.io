@@ -3,7 +3,7 @@
 	"htmlDir": "/public",
 	"formHtml": "form.html",
 	"outputHtml": "output.html",
-	"idSize": 32,
+	"idSize": 24,
 	"idType": "hex",
 	"defaults": {
 		"expr": "({{ time.toLocaleString('en-us', { 'timeZone': 'America/New_York' }) }}): {{ method }} - {{ url }}",

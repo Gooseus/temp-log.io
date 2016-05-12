@@ -22,9 +22,6 @@
 ### To Do
 
 * Output app should look like a log terminal and should use web sockets to receive new log pushes in realtime
-* Logs should be stored in a persistent data structure
-* Form should take an optional string expression for processing log output
-* Form should take an optional number value for the limit on history
 
 ### License
 
