@@ -17,21 +17,24 @@ const Promise = require("bluebird"),
 	app = express();
 
 expressions.filters.stringify = input => JSON.stringify(input);
+expressions.filters.prettyStringify = input => JSON.stringify(input,null,2);
+expressions.filters.eastCoastTZ = input => input.toLocaleString("en-us", { "timeZone": "America/New_York" });
 
 app.set("redis", redis);
 app.set("port", process.env.PORT || config.port);
-app.set("formHtml", config.formHtml);
+// app.set("formHtml", config.formHtml);
 app.set("outputHtml", config.outputHtml);
-app.set("htmlDir", config.htmlDir);
+app.set("staticDir", config.staticDir);
 app.set("idSize", config.idSize);
 app.set("idType", config.idType);
 
 app.set("defaultExpr", config.defaults.expr);
 app.set("outLimit", config.defaults.limit);
 
+app.use(express.static(app.get("staticDir")));
 app.use(function(req,res,next) {
-	if(req.body && Object.keys(req.body)>0) {
-		req.rawBody = req.body;
+	if(req.body) {
+		req.originalBody = req.body;
 	}
 
 	next();
@@ -39,60 +42,32 @@ app.use(function(req,res,next) {
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
-app.get("/", function(req, res) {
-	// Deliver HTML logger creation form here
-	res.sendFile(app.get("formHtml"), { root: __dirname + app.get("htmlDir") });
-});
+// app.get("/", function(req, res) {
+// 	// Deliver HTML logger creation form here
+// 	res.sendFile(app.get("formHtml"), { root: __dirname + app.get("staticDir") });
+// });
 
 app.post("/", function(req,res) {
 	const id = crypto.randomBytes(app.get("idSize")).toString(app.get("idType")),
 		url = req.protocol+"://" + req.hostname + (process.env.NODE_ENV != "production" ? ":"+app.get("port") : "") + "/i/" + id;
 
-	console.log("creating log", url, req.body);
-
 	res.send(url);
 
-	redis.set(`url-${id}`, JSON.stringify({
-		id: id,
-		url: url,
-		logs: [],
-		expr: req.body.expr || app.get("defaultExpr"),
-		limit: req.body.limit || app.get("outLimit")
-	}));
-});
-
-app.all("/i/:id", function inputLogHandler(req,res,next) {
-	console.log("we get here??", req.params.id);
-	
-	req.time = new Date();
-
-	redis.get(`url-${req.params.id}`)
-	.then(JSON.parse)
-	.then((log) => {
-		const scope = lodash.pick(req, "time", "method", "url", "originalUrl", "body", "rawBody", "headers", "query", "params"),
-			entry = log.expr.replace(/\{\{\s*(.*?)\s*\}\}/g, function compileStringSubExpressions(match,sub,offset,full) {
-					return expressions.compile(sub)(scope);
+	const log = JSON.stringify({
+					id: id,
+					url: url,
+					expr: req.body.expr || app.get("defaultExpr"),
+					limit: req.body.limit || app.get("outLimit")
 				});
 
-		return redis.rpush(`log-${log.id}`,entry).then(function(len) {
-			res.status(200).send(entry);
+	console.log("creating log", url, log);
 
-			console.log(`log ${log.id} now has ${len} entries.`);
-			if(len>log.limit) {
-				console.log(`trimming log ${log.id}`);
-				redis.ltrim(`log-${log.id}`, -1*(log.limit-1), -1);
-			}
-		});
-	})
-	.catch((err) => {
-		console.log("redis or json error", err);
-		next(err);
-	});
+	redis.set(`url-${id}`, log);
 });
 
 app.get("/o/:id", function outputLogHandler(req,res,next) {
 	if(!req.xhr) {
-		return res.sendFile(app.get("outputHtml"), { root: __dirname + app.get("htmlDir") });
+		return res.sendFile(app.get("outputHtml"), { root: __dirname + '/' + app.get("staticDir") });
 	}
 
 	console.log(`getting log-${req.params.id}`);
@@ -103,7 +78,36 @@ app.get("/o/:id", function outputLogHandler(req,res,next) {
 		console.log("redis or json error", err);
 		next(err);
 	});
+});
 
+app.all("/i/:id", function inputLogHandler(req,res,next) {
+	req.time = new Date();
+
+	redis.get(`url-${req.params.id}`)
+	.then(JSON.parse)
+	.then((log) => {
+		const scope = lodash.pick(req, "time", "method", "url", "originalUrl", "body", "originalBody", "headers", "query", "params"),
+			entry = log.expr.replace(/\{\{\s*(.*?)\s*\}\}/g, function compileStringSubExpressions(match,sub,offset,full) {
+					return expressions.compile(sub)(scope);
+				});
+
+		return redis.rpush(`log-${log.id}`,entry)
+					.then(function(len) {
+						redis.set(`lastEntry-${log.id}`, Date.now());
+						
+						res.status(200).send(entry);
+
+						console.log(`log ${log.id} now has ${len} entries.`);
+						if(len>log.limit) {
+							console.log(`trimming log ${log.id}`);
+							redis.ltrim(`log-${log.id}`, -1*(log.limit-1), -1);
+						}
+					});
+	})
+	.catch((err) => {
+		console.log("redis or json error", err);
+		next(err);
+	});
 });
 
 app.all("*", function expressCatchAllHandler(req,res) {

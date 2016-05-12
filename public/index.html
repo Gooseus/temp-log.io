@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<base href="/" />
+	<title>Temp Log</title>
+	<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="foundation.min.css">
+</head>
+<body>
+	<form method="post">
+		<div class="row">
+			<legend><h1>Create a Log URL</h1></legend>
+		</div>
+		<div class="row">
+			<label>Log Expression
+				<input type="text" id="expr" name="expr" placeholder="logging expression" />
+			</label>
+			<p class="help-text">Defaults to `({{ time.toLocaleString('en-us', { 'timeZone': 'America/New_York' }) }}): {{ method }} - {{ url }}`</p>
+			
+			<label>Log Limit</label>
+			<input type="number" id="limit" name="limit" placeholder="size" min="1" max="100" />
+			<p class="help-text">Defaults to 10.</p>
+		</div>
+		<div class="row">
+			<input type="submit" value="Create" class="button success float-right" />
+		</div>
+	</form>
+
+    <script src="jquery.js"></script>
+    <script src="foundation.js"></script>
+</body>
