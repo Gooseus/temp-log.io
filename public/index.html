@@ -16,16 +16,54 @@
 			<label>Log Expression
 				<input type="text" id="expr" name="expr" placeholder="logging expression" />
 			</label>
-			<p class="help-text">Defaults to `({{ time | toLocale:'en-us':'America/New_York' }}): {{ method }} - {{ url }}`</p>
+			<p class="help-text">See below for expression help.  Defaults to `({{ time | toLocale:'en-us':'America/New_York' }}): {{ method }} - {{ url }}`</p>
 			
-			<label>Log Limit</label>
-			<input type="number" id="limit" name="limit" placeholder="size" min="1" max="100" />
-			<p class="help-text">Defaults to 10.</p>
+			<label>Log Limit
+				<input type="number" id="limit" name="limit" placeholder="size" min="1" max="100" />
+			</label>
+			<p class="help-text">How much log history to store.  Defaults to 10 entries.</p>
 		</div>
 		<div class="row">
 			<input type="submit" value="Create" class="large button float-right" />
 		</div>
 	</form>
+	<section class="container">
+		<div class="row">
+			<header><h4>Documentation</h4></header>
+		</div>
+		<div class="row">
+			<h5>Expression Data</h5>
+			<dl>
+				<dt>time</dt>
+				<dd>Date object for the request timestamp.  Should be formatted with available Filters.</dd>
+				<dt>method</dt>
+				<dd>String for the request method.</dd>
+				<dt>url</dt>
+				<dd>String for the request URL.</dd>
+				<dt>originalUrl</dt>
+				<dd>String for the original request URL before parsing.</dd>
+				<dt>body</dt>
+				<dd>Object with the request body data.</dd>
+				<dt>originalBody</dt>
+				<dd>String for the original request body before parsing.</dd>
+				<dt>headers</dt>
+				<dd>Object with the request header data</dd>
+				<dt>query</dt>
+				<dd>Object with the request querystring data</dd>
+			</dl>
+		</div>
+		<div class="row">
+			<h5>Expression Filters</h5>
+			<dl>
+				<dt>stringify</dt>
+				<dd>Stringify a JSON object input.</dd>
+				<dt>prettyStringify</dt>
+				<dd>Stringify a JSON object input prettily with indentation and linebreaks.</dd>
+				<dt>toLocale:country:timezone</dt>
+				<dd>Use the toLocaleString function of a Date object to create a formatted date string.<br /><i><small>i.e. {{ time | toLocale:"en-us":"America/New_York" }}</small></i></dd>
+			</dl>
+		</div>
+	</section>
 
     <script src="/jquery.js"></script>
     <script src="/foundation.js"></script>

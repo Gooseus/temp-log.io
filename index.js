@@ -89,7 +89,7 @@ app.all("/i/:id", function inputLogHandler(req,res,next) {
 	redis.get(`url-${req.params.id}`)
 	.then(JSON.parse)
 	.then((log) => {
-		const scope = lodash.pick(req, "time", "method", "url", "originalUrl", "body", "originalBody", "headers", "query", "params"),
+		const scope = lodash.pick(req, "time", "method", "url", "originalUrl", "body", "originalBody", "headers", "query"),
 			entry = log.expr.replace(/\{\{\s*(.*?)\s*\}\}/g, function compileStringSubExpressions(match,sub,offset,full) {
 					return expressions.compile(sub)(scope);
 				});

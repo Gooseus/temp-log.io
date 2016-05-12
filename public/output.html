@@ -9,7 +9,7 @@
 	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/foundation/6.2.1/foundation.min.css">
 </head>
 <body ng-controller="AppCtrl">
-	<h4>Output <small>{{ log.expr }}</small></h4>
+	<h6>Output for <small>{{ log.expr }}</small></h6>
 	<div class="container">
 		<div class="callout small" data-closable="slide-out-right" ng-repeat="entry in log.entries track by $index"><pre>{{ entry }}</pre></div>
 	</div>
