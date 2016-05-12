@@ -10,40 +10,48 @@ const Promise = require("bluebird"),
 	bodyParser = require("body-parser"),
 	expressions = require("angular-expressions"),
 	lodash = require("lodash"),
-	app = express(),
-	port = process.env.PORT || 5000,
-	expr_default = "({{ time.toLocaleString('en-us') }}): {{ method }} - {{ url }}";
+	config = __require("config.json"),
+
+	app = express();
 
 var logs = {};
 
-app.set("port", port);
+app.set("port", process.env.PORT || config.port);
+app.set("formHtml", config.formHtml);
+app.set("outputHtml", config.outputHtml);
+app.set("htmlDir", config.htmlDir);
+app.set("idSize", config.idSize);
+app.set("idType", config.idType);
+
+app.set("defaultExpr", config.defaults.expr);
+app.set("outLimit", config.defaults.limit);
+
 app.use(bodyParser.json());
 
 app.get("/", function(req, res) {
 	// Deliver HTML logger creation form here
-	res.sendFile("form.html", { root: __dirname + '/public' });
+	res.sendFile(app.get("formHtml"), { root: __dirname + app.get("htmlDir") });
 });
 
 app.post("/", function(req,res) {
-	const hash = crypto.randomBytes(32).toString('hex'),
-		url = req.protocol+"://"+req.hostname+((port!=80 && port!=443) ? ":"+port : "") + "/i/" + hash,
-		logger = {
-			hash: hash,
-			url: url,
-			expr: req.body.expr || expr_default,
-			logs: [],
-			limit: 10
-		};
+	const id = crypto.randomBytes(app.get("idSize")).toString(app.get("idType")),
+		url = req.protocol+"://"+req.hostname+((app.get("port")!=80 && app.get("port")!=443) || (process.env.NODE_ENV == "production") ? ":"+app.get("port") : "") + "/i/" + id;
 
 	res.send(url);
 
-	logs[hash] = logger;
+	logs[id] = {
+		id: id,
+		url: url,
+		logs: [],
+		expr: req.body.expr || app.get("defaultExpr"),
+		limit: req.body.limit || app.get("outLimit")
+	};
 });
 
-app.all("/i/:hash", function(req,res,next) {
-	console.log("we get here??", req.params.hash);
+app.all("/i/:id", function inputLogHandler(req,res,next) {
+	console.log("we get here??", req.params.id);
 
-	const logger = logs[req.params.hash];
+	const logger = logs[req.params.id];
 	if(!logger) {
 		return next();
 	}
@@ -51,7 +59,7 @@ app.all("/i/:hash", function(req,res,next) {
 	req.time = new Date();
 
 	const scope = lodash.pick(req, "time", "method", "url", "originalUrl", "body", "headers", "query", "params"),
-		log = logger.expr.replace(/\{\{([^\}]+)\}\}/g, function(match,sub,offset,full) {
+		log = logger.expr.replace(/\{\{\s*(.*?)\s*\}\}/g, function(match,sub,offset,full) {
 				return expressions.compile(sub)(scope);
 			});
 
@@ -63,9 +71,9 @@ app.all("/i/:hash", function(req,res,next) {
 	}
 });
 
-app.get("/o/:hash", function(req,res,next) {
+app.get("/o/:id", function outputLogHandler(req,res,next) {
 	// Deliver HTML logger reading app here
-	const logger = logs[req.params.hash];
+	const logger = logs[req.params.id];
 	if(!logger) {
 		return next();
 	}
@@ -73,7 +81,7 @@ app.get("/o/:hash", function(req,res,next) {
 	if(req.xhr) {
 		res.json(logger.logs);
 	} else {
-		res.sendFile("output.html", { root: __dirname + '/public' });	
+		res.sendFile(app.get("outputHtml"), { root: __dirname + app.get("htmlDir") });
 	}
 });
 
@@ -86,11 +94,7 @@ app.use(function expressErrorHandler(err, req, res, next) {
 		console.error(err.stack);
 	}
 
-	res.status(err.status || 500).send(err.message);
+	res.status(err.status || 500).send(err.message || "Server Error");
 });
 
-app.listen(app.get("port"), function expressAppListenHandler() {
-	console.log("");
-	console.log("Service running on port: " + app.get("port"));
-	console.log("");
-});
+app.listen(app.get("port"), function expressAppListenHandler() { console.log("\nService running on port " + app.get("port") + "\n"); });

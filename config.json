@@ -1,0 +1,12 @@
+{
+	"port": 5000,
+	"htmlDir": "/public",
+	"formHtml": "form.html",
+	"outputHtml": "output.html",
+	"idSize": 32,
+	"idType": "hex",
+	"defaults": {
+		"expr": "({{ time.toLocaleString('en-us', { 'timeZone': 'America/New_York' }) }}): {{ method }} - {{ url }}",
+		"limit": 10
+	}
+}
