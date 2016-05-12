@@ -18,7 +18,7 @@ const Promise = require("bluebird"),
 
 expressions.filters.stringify = input => JSON.stringify(input);
 expressions.filters.prettyStringify = input => JSON.stringify(input,null,2);
-expressions.filters.eastCoastTZ = input => input.toLocaleString("en-us", { "timeZone": "America/New_York" });
+expressions.filters.toLocale = (input,locale,tz) => input.toLocaleString(locale || "en-us", { "timeZone": (tz || "America/New_York") });
 
 app.set("redis", redis);
 app.set("port", process.env.PORT || config.port);
@@ -72,8 +72,11 @@ app.get("/o/:id", function outputLogHandler(req,res,next) {
 
 	console.log(`getting log-${req.params.id}`);
 
-	redis.lrange(`log-${req.params.id}`,0,-1)
-	.then((log) => res.json(log))
+	Promise.all([
+		redis.get(`url-${req.params.id}`).then(JSON.parse),
+		redis.lrange(`log-${req.params.id}`,0,-1)
+	])
+	.spread((log,entries) => res.json(lodash.extend(log, { entries: entries })))
 	.catch((err) => {
 		console.log("redis or json error", err);
 		next(err);
@@ -94,7 +97,7 @@ app.all("/i/:id", function inputLogHandler(req,res,next) {
 		return redis.rpush(`log-${log.id}`,entry)
 					.then(function(len) {
 						redis.set(`lastEntry-${log.id}`, Date.now());
-						
+
 						res.status(200).send(entry);
 
 						console.log(`log ${log.id} now has ${len} entries.`);

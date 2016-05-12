@@ -5,13 +5,16 @@
 	<title>Temp Log</title>
 	<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/foundation/6.2.1/foundation.min.css">
 </head>
 <body ng-controller="AppCtrl">
-	<h1>Log Output:</h1>
-	<ul>
-		<li ng-repeat="log in logs track by $index"><pre>{{ log }}</pre></li>
-	</ul>
-	<!-- https://ajax.googleapis.com/ajax/libs/angularjs/1.5.5/angular.min.js -->
+	<h4>Output <small>{{ log.expr }}</small></h4>
+	<div class="container">
+		<div class="callout small" data-closable="slide-out-right" ng-repeat="entry in log.entries track by $index"><pre>{{ entry }}</pre></div>
+	</div>
+
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/foundation/6.2.1/foundation.min.js"></script>
 	<script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.5.5/angular.min.js"></script>
 	<script>
 		angular.module("templog",[])
@@ -32,7 +35,7 @@
 				.then(function(res) {
 					console.log(res);
 					if(res.data) {
-						$scope.logs = res.data;
+						$scope.log = res.data;
 					}
 				})
 				.catch(function(err) {
