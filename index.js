@@ -109,7 +109,7 @@ app.all("/i/:id", function inputLogHandler(req,res,next) {
 
 						redis.set(`lastEntry-${log.id}`, Date.now());
 
-						socket.emit(`log-${log.id}`, entry);
+						io.sockets.emit(`log-${log.id}`, entry);
 						res.status(200).send(entry);
 
 						console.log(`log ${log.id} now has ${len} entries.`);
