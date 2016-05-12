@@ -35,7 +35,7 @@ app.get("/", function(req, res) {
 
 app.post("/", function(req,res) {
 	const id = crypto.randomBytes(app.get("idSize")).toString(app.get("idType")),
-		url = req.protocol+"://"+req.hostname+((app.get("port")!=80 && app.get("port")!=443) || (process.env.NODE_ENV == "production") ? ":"+app.get("port") : "") + "/i/" + id;
+		url = req.protocol+"://" + req.hostname + (process.env.NODE_ENV != "production" ? ":"+app.get("port") : "") + "/i/" + id;
 
 	res.send(url);
 
