@@ -14,11 +14,14 @@ const Promise = require("bluebird"),
 	config = __require("config.json"),
 
 	redis = new Redis(process.env.REDIS_URL || "localhost"),
-	app = express();
+	app = express(),
+	server = require("http").Server(app),
+	io = require("socket.io")(server);
 
 expressions.filters.stringify = input => JSON.stringify(input);
 expressions.filters.prettyStringify = input => JSON.stringify(input,null,2);
 expressions.filters.toLocale = (input,locale,tz) => input.toLocaleString(locale || "en-us", { "timeZone": (tz || "America/New_York") });
+expressions.filters.eastCoastTZ = (input) => expressions.filters.toLocale(input);
 
 app.set("redis", redis);
 app.set("port", process.env.PORT || config.port);
@@ -83,6 +86,13 @@ app.get("/o/:id", function outputLogHandler(req,res,next) {
 	});
 });
 
+var socket;
+
+io.on("connection", function(s) {
+	socket = s;
+});
+
+
 app.all("/i/:id", function inputLogHandler(req,res,next) {
 	req.time = new Date();
 
@@ -96,8 +106,10 @@ app.all("/i/:id", function inputLogHandler(req,res,next) {
 
 		return redis.rpush(`log-${log.id}`,entry)
 					.then(function(len) {
+
 						redis.set(`lastEntry-${log.id}`, Date.now());
 
+						socket.emit(`log-${log.id}`, entry);
 						res.status(200).send(entry);
 
 						console.log(`log ${log.id} now has ${len} entries.`);
@@ -125,6 +137,5 @@ app.use(function expressErrorHandler(err, req, res, next) {
 	res.status(err.status || 500).send(err.message || "Server Error");
 });
 
-app.listen(app.get("port"), function expressAppListenHandler() {
-	console.log("\nService running on port " + app.get("port") + "\n");
-});
+server.listen(app.get("port"));
+console.log("\nService running on port " + app.get("port") + "\n");

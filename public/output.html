@@ -11,9 +11,11 @@
 <body ng-controller="AppCtrl">
 	<h6>Output for <small>{{ log.expr }}</small></h6>
 	<div class="container">
-		<div class="callout small" data-closable="slide-out-right" ng-repeat="entry in log.entries track by $index"><pre>{{ entry }}</pre></div>
+		<div class="callout small" data-closable="slide-out-right" ng-repeat="entry in log.entries | orderBy:'-' track by $index "><pre>{{ entry }}</pre></div>
 	</div>
 
+	<script src="/socket.io/socket.io.js"></script>
+	<script src="https://code.jquery.com/jquery-2.2.3.min.js"></script>
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/foundation/6.2.1/foundation.min.js"></script>
 	<script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.5.5/angular.min.js"></script>
 	<script>
@@ -24,19 +26,36 @@
 				$httpProvider.defaults.headers.common["X-Requested-With"] = 'XMLHttpRequest';
 			}
 		])
-		.controller("AppCtrl", [
-			"$scope", "$http",
-			function($scope, $http) {
-				console.log("app controller starting up");
+		.service("$io", [
+			"$rootScope",
+			function($rootScope) {
+				var IO = io();
 
-				$scope.logs = [];
+				return {
+					on: function(key,cb) {
+						IO.on(key,function() {
+							var args=arguments;
+							$rootScope.$apply(function() {
+								cb.apply(IO,args);
+							});
+						});
+					}
+				};
+			}
+		])
+		.controller("AppCtrl", [
+			"$scope", "$http", "$window", "$io",
+			function($scope, $http, $window, $io) {
+				var id = $window.location.pathname.replace('/o/','');
 
 				$http.get("")
 				.then(function(res) {
-					console.log(res);
-					if(res.data) {
-						$scope.log = res.data;
-					}
+					$scope.log = res.data;
+					
+					$io.on("log-"+id, function(entry) {
+						console.log("we have a new log entry", entry);
+						$scope.log.entries.push(entry);
+					});
 				})
 				.catch(function(err) {
 					console.log(err);
