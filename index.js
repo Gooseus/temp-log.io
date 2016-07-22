@@ -86,11 +86,11 @@ app.get("/o/:id", function outputLogHandler(req,res,next) {
 	});
 });
 
-var socket;
+// var socket;
 
-io.on("connection", function(s) {
-	socket = s;
-});
+// io.on("connection", function(s) {
+// 	socket = s;
+// });
 
 
 app.all("/i/:id", function inputLogHandler(req,res,next) {

@@ -11,7 +11,7 @@
 <body ng-controller="AppCtrl">
 	<h6>Output for <small>{{ log.expr }}</small></h6>
 	<div class="container">
-		<div class="callout small" data-closable="slide-out-right" ng-repeat="entry in log.entries | orderBy:'-' track by $index "><pre>{{ entry }}</pre></div>
+		<div class="callout small" data-closable="slide-out-right" ng-repeat="entry in log.entries | orderBy:'$index':true track by $index "><pre>{{ entry }}</pre></div>
 	</div>
 
 	<script src="/socket.io/socket.io.js"></script>
@@ -27,32 +27,33 @@
 			}
 		])
 		.service("$io", [
-			"$rootScope",
-			function($rootScope) {
-				var IO = io();
-
-				return {
-					on: function(key,cb) {
-						IO.on(key,function() {
-							var args=arguments;
-							$rootScope.$apply(function() {
-								cb.apply(IO,args);
+			function() {
+				return io();
+			}
+		])
+		.service("$ioSocketOn", [
+			"$rootScope", "$io",
+			function($rootScope, $io) {
+				return function(key,cb) {
+							$io.on(key,function() {
+								var args=arguments;
+								$rootScope.$apply(function() {
+									cb.apply($io,args);
+								});
 							});
-						});
-					}
-				};
+						};
 			}
 		])
 		.controller("AppCtrl", [
-			"$scope", "$http", "$window", "$io",
-			function($scope, $http, $window, $io) {
+			"$scope", "$http", "$window", "$ioSocketOn",
+			function($scope, $http, $window, $ioSocketOn) {
 				var id = $window.location.pathname.replace('/o/','');
 
 				$http.get("")
 				.then(function(res) {
 					$scope.log = res.data;
 					
-					$io.on("log-"+id, function(entry) {
+					$ioSocketOn("log-"+id, function(entry) {
 						console.log("we have a new log entry", entry);
 						$scope.log.entries.push(entry);
 					});

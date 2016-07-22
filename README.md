@@ -25,6 +25,7 @@
 
 ### To Do
 
+* Convert front-end to Angular
 * Output app should look like a log terminal
 * Use web sockets to receive new log pushes in realtime, like tailing a real log
 * Dynamic grep filter for log
